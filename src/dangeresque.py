@@ -1,4 +1,4 @@
-import pygame, time, random
+import pygame, time, random, colorsys
 
 
 class Burst:
@@ -7,24 +7,22 @@ class Burst:
         self.duration = duration
         self.start_time = time.time()
 
-    def scale(self, start, end, percentage):
-        diff = (end - start) * percentage
-        return start + diff
-
     def done(self):
         return time.time() > (self.start_time + self.duration)
     
     def current(self):
         now = time.time()
-        percentage = (now - self.start_time) / self.duration
+        percentage = 1 - (now - self.start_time) / self.duration
 
-        if percentage > 1:
+        if percentage < 0:
             return (0, 0, 0)
 
-        r = self.scale(self.color[0], 255, percentage)
-        g = self.scale(self.color[1], 255, percentage)
-        b = self.scale(self.color[2], 255, percentage)
-
+        r, g, b = [x/255.0 for x in self.color]
+        h, l, s = colorsys.rgb_to_hls(r, g, b)
+        l = l * percentage
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        r, g, b = [x*255.0 for x in (r, g, b)]
+        
         return (r, g, b)
 
 
@@ -32,8 +30,18 @@ def random_burst():
     r = random.randrange(0, 255)
     g = random.randrange(0, 255)
     b = random.randrange(0, 255)
-    duration = random.randrange(1, 5)
+    duration = random.randrange(3, 5)
     return Burst((r,g,b), duration)
+
+
+class Sequence:
+    def __init__(self):
+        b = random_burst()
+        self.bursts = [b, b, b]
+
+    def done(self):
+        return self.bursts[0].done()
+
 
 pygame.init()
 
@@ -42,7 +50,7 @@ black = (0,0,0)
 
 display = pygame.display.set_mode((800,600))
 
-burst = random_burst()
+s = Sequence()
 
 while True:
     for event in pygame.event.get():
@@ -50,9 +58,11 @@ while True:
             pygame.quit()
             quit()
 
-    if burst.done():
-        burst = random_burst()
+    if s.done():
+        s = Sequence()
 
     display.fill(black)
-    pygame.draw.rect(display, burst.current(), (200, 200, 100, 100))    
+    pygame.draw.rect(display, s.bursts[0].current(), (200, 200, 100, 100))
+    pygame.draw.rect(display, s.bursts[1].current(), (400, 200, 100, 100))
+    pygame.draw.rect(display, s.bursts[2].current(), (600, 200, 100, 100))
     pygame.display.update()
